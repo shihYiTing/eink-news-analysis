@@ -1,0 +1,8 @@
+# Secrets — never commit (see CLAUDE.md → Architectural Invariant #2)
+.env
+
+# Ephemeral workbench / Supabase-write fallback reports
+.tmp/*
+!.tmp/.gitkeep
+
+node_modules/
