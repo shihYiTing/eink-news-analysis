@@ -1,7 +1,7 @@
 # SOP-03 — Report Compose & Deliver
 
 ## Purpose
-Persist today's analyzed items to Supabase, compose a human-readable risk report (today's overview + 7-day trend), and deliver it by email via Gmail SMTP (app password). This is the only SOP that touches external credentials (Supabase, Gmail SMTP) — see `docs/schema.md` and CLAUDE.md → L (Link) for what's required before this SOP can actually run.
+Persist today's analyzed items to Supabase, compose a human-readable risk report (today's overview + 7-day trend), and deliver it by email via the Resend HTTPS API. This is the only SOP that touches external credentials (Supabase, Resend) — see `docs/schema.md` and CLAUDE.md → L (Link) for what's required before this SOP can actually run.
 
 ## Inputs
 - `analyzed_items`, `analysis_flags` from SOP-02
@@ -55,7 +55,7 @@ Structure (Markdown, converted to email-safe HTML at send time):
 If `total_items = 0` (SOP-01 Step 6's quiet-day case): still send the report, with the overview reading "今日無新增可信新聞" and the rest of the sections abbreviated accordingly — a missing email should never be the only signal that the pipeline ran.
 
 ### 5. Send Email
-Send via Gmail SMTP (`smtp.gmail.com:587`) using the credentials in `.env` (`SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_APP_PASSWORD`). Subject line format: `[元太新聞風險日報] {run_date}{ — 🚨N 則高風險 if high_risk_count > 0}` so urgency is visible without opening the email. Recipient list is configured in `.env` (not hardcoded in this SOP).
+Send via the Resend HTTPS API (`POST api.resend.com/emails`) using `RESEND_API_KEY` / `RESEND_FROM_EMAIL` from `.env`. Subject line format: `[元太新聞風險日報] {run_date}{ — 🚨N 則高風險 if high_risk_count > 0}` so urgency is visible without opening the email. Recipient list is configured in `.env` (not hardcoded in this SOP).
 
 ### 6. Write `eink_daily_reports` Row
 Regardless of email outcome, write one row: `report_date`, the four counts, `report_body` (the full composed Markdown, for audit), `email_status` (`sent` | `failed` | `skipped`), `email_sent_at` if applicable.
