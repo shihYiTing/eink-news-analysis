@@ -1,10 +1,9 @@
-// SOP-03 Step 5 — Send Email via Gmail SMTP
+// SOP-03 Step 5 — Send Email via Resend (HTTPS API, no SMTP/OAuth)
 // Reads JSON { subject, html } from stdin, outputs JSON on stdout:
 // { sent: boolean, sent_at?: string, error?: string }
-// Recipient list and sender come from .env (RECIPIENT_EMAILS, SMTP_USER) — not hardcoded.
+// Recipient list and sender come from .env (RECIPIENT_EMAILS, RESEND_FROM_EMAIL) — not hardcoded.
 const { loadEnv } = require('./lib/env');
 loadEnv();
-const { sendMail } = require('./lib/smtp');
 const { readStdin } = require('./lib/read-stdin');
 
 (async () => {
@@ -19,20 +18,29 @@ const { readStdin } = require('./lib/read-stdin');
   }
 
   const { subject, html } = payload;
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_APP_PASSWORD;
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
   const to = (process.env.RECIPIENT_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
 
-  if (!host || !user || !pass || to.length === 0) {
-    process.stdout.write(JSON.stringify({ sent: false, error: 'SMTP not configured (SMTP_HOST/SMTP_USER/SMTP_APP_PASSWORD/RECIPIENT_EMAILS missing)' }));
+  if (!apiKey || !from || to.length === 0) {
+    process.stdout.write(JSON.stringify({ sent: false, error: 'Resend not configured (RESEND_API_KEY/RESEND_FROM_EMAIL/RECIPIENT_EMAILS missing)' }));
     process.exitCode = 1;
     return;
   }
 
   try {
-    await sendMail({ host, port, user, pass, from: user, to, subject, html });
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from, to, subject, html }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`Resend API ${res.status}: ${text}`);
+    }
     process.stdout.write(JSON.stringify({ sent: true, sent_at: new Date().toISOString() }));
   } catch (e) {
     process.stdout.write(JSON.stringify({ sent: false, error: e.message }));
